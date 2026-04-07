@@ -5,20 +5,20 @@
 ![UI/UX](https://img.shields.io/badge/UI-Glassmorphism-blue)
 ![Firebase](https://img.shields.io/badge/Backend-Firebase-orange)
 
-**PhishGuard Pro** — это высокотехнологичное SPA-приложение, созданное для обучения пользователей выявлению сложных фишинговых атак. Проект использует принципы **Объяснимого ИИ (XAI)**, предоставляя визуальную обратную связь в реальном времени.
+**PhishGuard Pro** is a high-fidelity Single Page Application (SPA) designed to train users in identifying sophisticated phishing vectors. The project integrates **Explainable AI (XAI)** principles by providing real-time, visual feedback on deceptive elements.
 
 ---
 
-### 🚀 Ключевые особенности
+### 🚀 Key Technical Features
 
-* **Симуляция продвинутых угроз:** Обучение детекции омографических атак (Punycode), махинаций с поддоменами и скрытых IP-адресов.
-* **Компонент XAI (Explainable AI):** Кастомный логический движок, который подсвечивает вредоносные артефакты в DOM-дереве при взаимодействии.
-* **Security-by-Design:** * Интеграция **DOMPurify** для очистки входных данных.
-    * Строгая политика безопасности контента (**CSP**) для защиты от XSS.
-* **Real-time синхронизация:** Использование **Firebase (Auth & Firestore)** для отслеживания очков и обновления таблицы лидеров.
-* **Modern UI/UX:** Дизайн в стиле **Glassmorphism** с использованием `backdrop-filter` для создания премиального интерфейса.
+* **Advanced Threat Simulation:** Supports detection training for Homograph (Punycode) attacks, Sub-domain trickery, and Hidden IP-based URLs.
+* **Explainable AI (XAI) Component:** Implemented a custom logic engine that visually isolates malicious artifacts (DOM elements) upon user interaction.
+* **Security-by-Design:** * Integrated **DOMPurify** for input sanitization.
+    * Established a strict **Content Security Policy (CSP)** to mitigate XSS risks.
+* **Real-time Synchronization:** Built using **Firebase (Auth & Firestore)** for seamless, real-time score tracking and leaderboard updates.
+* **Modern UI/UX:** Designed with a **Glassmorphism** aesthetic using CSS3 `backdrop-filter` for a premium, dashboard-like feel.
 
-### 🛠 Стек технологий
+### 🛠 Tech Stack
 * **Frontend:** HTML5, CSS3 (Glassmorphism), JavaScript (SPA logic).
 * **Backend:** Firebase Auth, Cloud Firestore.
-* **Безопасность:** DOMPurify, CSP.
+* **Security Tools:** DOMPurify, CSP.
