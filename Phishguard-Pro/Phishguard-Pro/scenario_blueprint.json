@@ -1,0 +1,316 @@
+{
+  "_comment": "=======================================================================",
+  "_comment2": "PHISHING AWARENESS SIMULATOR — FIRESTORE DATA STRUCTURE BLUEPRINT",
+  "_comment3": "Collection: 'scenarios' | Each document represents one phishing scenario.",
+  "_comment4": "=======================================================================",
+
+  "firestore_collections": {
+
+    "scenarios": {
+      "_description": "Each document in this collection is a self-contained simulation scenario.",
+      "document_id": "auto-generated or semantic ID (e.g., 'sc_homograph_001')",
+      "schema": {
+        "id":           "string  — Unique scenario identifier (mirrors document ID)",
+        "difficulty":   "string  — 'easy' | 'medium' | 'hard' | 'expert'",
+        "category":     "string  — 'credential_harvest' | 'malware' | 'ceo_fraud' | 'invoice_scam'",
+        "threat_type":  "string  — 'homograph_attack' | 'subdomain_trickery' | 'ip_based_url' | 'lookalike_domain' | 'sender_spoofing'",
+        "isPhishing":   "boolean — Ground truth label for scoring",
+        "points":       "number  — Max points awarded for a correct answer",
+        "timePenalty":  "number  — Points deducted per second of hesitation (for expert mode)",
+        "createdAt":    "Firestore Timestamp",
+        "createdBy":    "string  — UID of admin who uploaded this scenario",
+        "isActive":     "boolean — Admins can toggle scenarios on/off",
+        "email": {
+          "_description": "All fields that render the simulated email",
+          "sender_display_name": "string  — The display name shown in the From field (e.g., 'PayPal Security')",
+          "sender_email_display": "string — The VISUALLY shown email address (may be spoofed)",
+          "sender_email_actual":  "string — The TRUE sending address (used in clue highlighting)",
+          "reply_to":             "string — Optional: a different reply-to address (another red flag)",
+          "subject":              "string — The email subject line",
+          "timestamp":            "string — Display timestamp (e.g., '10:42 AM')",
+          "has_attachment":       "boolean",
+          "attachment_name":      "string | null — (e.g., 'Invoice_2024.pdf.exe')",
+          "body_html":            "string — SANITIZED HTML body. Links use data-link-id attributes to reference the links array below.",
+          "links": [
+            {
+              "id":            "string  — Unique within this scenario (e.g., 'link_cta')",
+              "display_text":  "string  — The visible anchor text (e.g., 'Verify My Account')",
+              "display_url":   "string  — The URL shown in tooltip/status bar hover (the DECEPTIVE one)",
+              "actual_url":    "string  — The TRUE destination URL (the one used for education)",
+              "is_deceptive":  "boolean — Whether this link is the main attack vector",
+              "threat_detail": "string  — Short technical description of the deception technique"
+            }
+          ]
+        },
+        "clues": [
+          {
+            "element_selector": "string — CSS selector or data attribute to highlight (e.g., '[data-clue-id=\"sender\"]')",
+            "clue_id":          "string — Matches data-clue-id attribute in body_html or a special key like 'sender_email'",
+            "type":             "string — 'url' | 'sender' | 'attachment' | 'urgency_language' | 'grammar' | 'branding'",
+            "headline":         "string — Short clue title shown in the XAI modal (e.g., 'Subdomain Trickery Detected')",
+            "explanation":      "string — Full educational explanation shown in the XAI modal",
+            "severity":         "string — 'critical' | 'warning' | 'info'",
+            "highlight_color":  "string — CSS hex color for the glowing clue frame"
+          }
+        ],
+        "explanation_summary": "string — Paragraph summarizing why this is phishing/safe, shown after all clues",
+        "learn_more_url":      "string — External link to Wikipedia/SANS/NIST article"
+      }
+    },
+
+    "users": {
+      "_description": "One document per authenticated user. UID is the document ID.",
+      "schema": {
+        "uid":              "string  — Firebase Auth UID",
+        "email":            "string",
+        "displayName":      "string",
+        "role":             "string  — 'student' | 'admin'",
+        "totalScore":       "number  — Cumulative score across all sessions",
+        "scenariosPlayed":  "number",
+        "correctAnswers":   "number",
+        "accuracy":         "number  — Percentage: (correctAnswers / scenariosPlayed) * 100",
+        "createdAt":        "Firestore Timestamp",
+        "lastActive":       "Firestore Timestamp"
+      }
+    },
+
+    "sessions": {
+      "_description": "Each game session creates one document here. Enables per-session analytics.",
+      "schema": {
+        "sessionId":   "string  — Auto-generated",
+        "userId":      "string  — Firebase Auth UID",
+        "startedAt":   "Firestore Timestamp",
+        "endedAt":     "Firestore Timestamp | null",
+        "totalScore":  "number",
+        "results": [
+          {
+            "scenarioId":   "string",
+            "userAnswer":   "string — 'phishing' | 'safe'",
+            "correctAnswer":"boolean — isPhishing from scenario",
+            "isCorrect":    "boolean",
+            "pointsEarned": "number",
+            "timeSpentMs":  "number — milliseconds from render to click"
+          }
+        ]
+      }
+    }
+  },
+
+  "example_scenario_documents": [
+    {
+      "id": "sc_homograph_001",
+      "difficulty": "expert",
+      "category": "credential_harvest",
+      "threat_type": "homograph_attack",
+      "isPhishing": true,
+      "points": 200,
+      "timePenalty": 0,
+      "isActive": true,
+      "email": {
+        "sender_display_name": "Apple Support",
+        "sender_email_display": "no-reply@apple.com",
+        "sender_email_actual":  "no-reply@аpple.com",
+        "reply_to":             "harvest@darkweb-collector.xyz",
+        "subject":              "Your Apple ID has been compromised — Immediate action required",
+        "timestamp":            "9:07 AM",
+        "has_attachment":       false,
+        "attachment_name":      null,
+        "body_html": "<p>Dear Customer,</p><p>We have detected <span data-clue-id='urgency'>suspicious sign-in activity</span> on your Apple ID from a new device in Moscow, Russia.</p><p>Your account access has been <strong>temporarily suspended</strong>. You must verify your identity within <span data-clue-id='urgency'>24 hours</span> or your account will be permanently deleted.</p><p>Please click below to restore access:</p><p><a href='#' data-link-id='link_cta' data-clue-id='main_link'>Restore My Apple ID →</a></p><p>Apple Security Team</p>",
+        "links": [
+          {
+            "id":            "link_cta",
+            "display_text":  "Restore My Apple ID →",
+            "display_url":   "https://аpple.com/account/restore",
+            "actual_url":    "https://xn--pple-43d.com/account/restore",
+            "is_deceptive":  true,
+            "threat_detail": "Homograph Attack: The 'а' in 'аpple.com' is a Cyrillic character (U+0430), not a Latin 'a'. The Punycode equivalent is xn--pple-43d.com — a completely different domain."
+          }
+        ]
+      },
+      "clues": [
+        {
+          "clue_id":          "sender_email",
+          "element_selector": "[data-clue-id='sender_email']",
+          "type":             "sender",
+          "headline":         "Homograph Attack in Sender Domain",
+          "explanation":      "The 'а' in 'аpple.com' is a Cyrillic Unicode character (U+0430), visually identical to the Latin 'a'. This is a homograph attack (also called an IDN homograph attack). Your email client renders it identically, but the actual domain is 'xn--pple-43d.com'. Always check the full email header, not just the display address.",
+          "severity":         "critical",
+          "highlight_color":  "#ef4444"
+        },
+        {
+          "clue_id":          "main_link",
+          "element_selector": "[data-clue-id='main_link']",
+          "type":             "url",
+          "headline":         "Punycode Domain in Hyperlink",
+          "explanation":      "Hovering over the CTA button reveals the status bar URL as 'xn--pple-43d.com'. This is the Punycode representation of the internationalized domain name using a Cyrillic 'а'. Legitimate companies like Apple always use their official, verified domain. The Punycode prefix 'xn--' is a dead giveaway.",
+          "severity":         "critical",
+          "highlight_color":  "#ef4444"
+        },
+        {
+          "clue_id":          "urgency",
+          "element_selector": "[data-clue-id='urgency']",
+          "type":             "urgency_language",
+          "headline":         "Manufactured Urgency Tactic",
+          "explanation":      "Phrases like 'suspicious sign-in from Moscow' and '24 hours or your account will be permanently deleted' are classic social engineering tactics. Phishers create artificial urgency to short-circuit rational thinking and compel immediate, unconsidered action. Legitimate companies do not threaten permanent deletion.",
+          "severity":         "warning",
+          "highlight_color":  "#f59e0b"
+        }
+      ],
+      "explanation_summary": "This email uses a sophisticated homograph (IDN) attack. The sender domain and the CTA link both replace the Latin letter 'a' with a visually identical Cyrillic character. Combined with urgency-inducing language, this is designed to bypass visual inspection and trick users into entering credentials on a spoofed Apple login page.",
+      "learn_more_url": "https://en.wikipedia.org/wiki/IDN_homograph_attack"
+    },
+    {
+      "id": "sc_subdomain_001",
+      "difficulty": "medium",
+      "category": "credential_harvest",
+      "threat_type": "subdomain_trickery",
+      "isPhishing": true,
+      "points": 150,
+      "isActive": true,
+      "email": {
+        "sender_display_name": "PayPal",
+        "sender_email_display": "service@paypal.com",
+        "sender_email_actual":  "service@paypal-account-support.net",
+        "subject":              "Action Required: Unusual activity on your account",
+        "timestamp":            "2:15 PM",
+        "has_attachment":       false,
+        "attachment_name":      null,
+        "body_html": "<p>Hello,</p><p>We noticed <span data-clue-id='urgency'>unusual activity</span> on your PayPal account. To prevent unauthorized transactions, we've placed a <strong>hold on your account</strong>.</p><p>Please <a href='#' data-link-id='link_verify' data-clue-id='main_link'>confirm your identity here</a> to restore full access within 48 hours.</p><p>If you do not verify, your account will be limited indefinitely.</p><p>— The PayPal Team</p>",
+        "links": [
+          {
+            "id":            "link_verify",
+            "display_text":  "confirm your identity here",
+            "display_url":   "https://paypal.com.account-verify-secure.net/login",
+            "actual_url":    "https://paypal.com.account-verify-secure.net/login",
+            "is_deceptive":  true,
+            "threat_detail": "Subdomain trickery: 'paypal.com' appears as a subdomain of 'account-verify-secure.net'. The actual domain (TLD+1) is 'account-verify-secure.net', NOT paypal.com."
+          }
+        ]
+      },
+      "clues": [
+        {
+          "clue_id":          "sender_email",
+          "element_selector": "[data-clue-id='sender_email']",
+          "type":             "sender",
+          "headline":         "Spoofed Sender Domain",
+          "explanation":      "While the display name says 'PayPal', the actual sending domain is 'paypal-account-support.net' — not paypal.com. Attackers register lookalike domains to pass casual inspection. PayPal only sends emails from @paypal.com addresses.",
+          "severity":         "critical",
+          "highlight_color":  "#ef4444"
+        },
+        {
+          "clue_id":          "main_link",
+          "element_selector": "[data-clue-id='main_link']",
+          "type":             "url",
+          "headline":         "Subdomain Trickery Attack",
+          "explanation":      "The link 'paypal.com.account-verify-secure.net' exploits how URLs are read. Browsers resolve domains right-to-left: the actual domain is 'account-verify-secure.net'. The 'paypal.com' part is merely a subdomain of the attacker's domain. To read a URL safely: find the last dot before the first forward slash — that's the real domain.",
+          "severity":         "critical",
+          "highlight_color":  "#ef4444"
+        }
+      ],
+      "explanation_summary": "This is a subdomain trickery attack. The URL 'paypal.com.account-verify-secure.net' looks like it belongs to PayPal, but the actual registrable domain (the part just before the first '/') is 'account-verify-secure.net'. PayPal.com is used as a misleading subdomain prefix.",
+      "learn_more_url": "https://www.phishing.org/phishing-techniques"
+    },
+    {
+      "id": "sc_ipurl_001",
+      "difficulty": "hard",
+      "category": "malware",
+      "threat_type": "ip_based_url",
+      "isPhishing": true,
+      "points": 175,
+      "isActive": true,
+      "email": {
+        "sender_display_name": "IT Helpdesk — University",
+        "sender_email_display": "helpdesk@university.edu",
+        "sender_email_actual":  "it-helpdesk@university-support.xyz",
+        "subject":              "Critical: VPN Client Update Required by EOD",
+        "timestamp":            "8:54 AM",
+        "has_attachment":       true,
+        "attachment_name":      "VPN_Installer_v3.2.exe",
+        "body_html": "<p>Dear Staff,</p><p>As part of our <strong>mandatory security compliance update</strong>, all university VPN clients must be updated by end of day today.</p><p>Due to a CDN issue, please download the installer directly from our backup server:</p><p><a href='#' data-link-id='link_download' data-clue-id='main_link'>Download VPN Update (v3.2)</a></p><p><span data-clue-id='urgency'>Failure to update will result in loss of VPN access at midnight.</span></p><p>IT Security Team</p>",
+        "links": [
+          {
+            "id":            "link_download",
+            "display_text":  "Download VPN Update (v3.2)",
+            "display_url":   "http://203.0.113.42/downloads/vpn_update.exe",
+            "actual_url":    "http://203.0.113.42/downloads/vpn_update.exe",
+            "is_deceptive":  true,
+            "threat_detail": "IP-based URL: Legitimate organizations NEVER distribute software via raw IP addresses. This bypasses domain-based security filters and makes the source completely unverifiable and untrustworthy."
+          }
+        ]
+      },
+      "clues": [
+        {
+          "clue_id":          "sender_email",
+          "element_selector": "[data-clue-id='sender_email']",
+          "type":             "sender",
+          "headline":         "Non-Institutional Sender Domain",
+          "explanation":      "The actual sending domain is 'university-support.xyz'. Legitimate IT departments only send from the official university domain (e.g., @university.edu). The '.xyz' TLD is free/cheap, commonly abused by spammers and phishers.",
+          "severity":         "critical",
+          "highlight_color":  "#ef4444"
+        },
+        {
+          "clue_id":          "main_link",
+          "element_selector": "[data-clue-id='main_link']",
+          "type":             "url",
+          "headline":         "Hidden IP-Based Download URL",
+          "explanation":      "The download link points to a raw IP address (203.0.113.42) instead of a domain name. This is a major red flag. Legitimate organizations host their software on named domains with valid SSL certificates. An IP-based URL cannot be verified, has no certificate trust chain, and is a classic malware distribution technique.",
+          "severity":         "critical",
+          "highlight_color":  "#ef4444"
+        },
+        {
+          "clue_id":          "urgency",
+          "element_selector": "[data-clue-id='urgency']",
+          "type":             "urgency_language",
+          "headline":         "Deadline Pressure Tactic",
+          "explanation":      "The 'midnight deadline' creates panic. Social engineers use time pressure to prevent victims from thinking critically, consulting colleagues, or verifying through official channels. When you feel rushed by an email, that pressure itself should be a red flag.",
+          "severity":         "warning",
+          "highlight_color":  "#f59e0b"
+        }
+      ],
+      "explanation_summary": "A spear-phishing email impersonating the IT Helpdesk. Three compounding red flags: a lookalike sender domain (.xyz), a raw IP address as the download link (a classic malware delivery technique), and a fabricated deadline to force immediate action without verification.",
+      "learn_more_url": "https://www.cisa.gov/topics/cyber-threats-and-advisories/malware-phishing"
+    },
+    {
+      "id": "sc_safe_001",
+      "difficulty": "easy",
+      "category": "legitimate",
+      "threat_type": "none",
+      "isPhishing": false,
+      "points": 100,
+      "isActive": true,
+      "email": {
+        "sender_display_name": "GitHub",
+        "sender_email_display": "noreply@github.com",
+        "sender_email_actual":  "noreply@github.com",
+        "subject":              "Your pull request was merged",
+        "timestamp":            "3:28 PM",
+        "has_attachment":       false,
+        "attachment_name":      null,
+        "body_html": "<p>Hi there,</p><p>Your pull request <strong>#42 — Fix authentication middleware</strong> was merged into <code>main</code> by <em>octocat</em>.</p><p>You can view the merged commit and any follow-up actions on your repository:</p><p><a href='#' data-link-id='link_pr' data-clue-id='main_link'>View Pull Request #42 →</a></p><p>You are receiving this because you authored the PR.</p><p>— The GitHub Team</p>",
+        "links": [
+          {
+            "id":            "link_pr",
+            "display_text":  "View Pull Request #42 →",
+            "display_url":   "https://github.com/user/repo/pull/42",
+            "actual_url":    "https://github.com/user/repo/pull/42",
+            "is_deceptive":  false,
+            "threat_detail": "Legitimate GitHub notification. Sender domain matches, URL goes to the official github.com domain, no urgency language, no credential requests."
+          }
+        ]
+      },
+      "clues": [
+        {
+          "clue_id":          "main_link",
+          "element_selector": "[data-clue-id='main_link']",
+          "type":             "url",
+          "headline":         "Legitimate Domain Confirmed",
+          "explanation":      "The link correctly points to 'github.com'. The sender domain is 'github.com', matching the organization. There is no urgency language, no credential requests, and the email describes a real GitHub workflow action. This is a safe, legitimate email.",
+          "severity":         "info",
+          "highlight_color":  "#10b981"
+        }
+      ],
+      "explanation_summary": "This is a legitimate GitHub notification email. The sending domain matches the company (github.com), the link points to the correct domain, there is no artificial urgency, and no credentials are being requested. Learning to recognize safe emails is just as important as spotting phishing.",
+      "learn_more_url": "https://docs.github.com/en/account-and-profile/managing-subscriptions-and-notifications-on-github/managing-notifications-from-your-inbox"
+    }
+  ]
+}

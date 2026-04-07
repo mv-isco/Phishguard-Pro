@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════════════════════════╗
+  ║         PHISHING AWARENESS SIMULATOR — PhishGuard Pro                   ║
+  ║         University Cyber Security Final Year Project                     ║
+  ║         Architecture: Single Page Application (SPA)                      ║
+  ║         Security Model: Security by Design — all user-supplied content   ║
+  ║         is sanitized via DOMPurify before injection into the DOM.        ║
+  ╚══════════════════════════════════════════════════════════════════════════╝
+  
+  VIEWS MANAGED BY JavaScript (app.js):
+    #view-auth      — Login / Registration
+    #view-sim       — Main Simulation (Email Client)
+    #view-admin     — Admin Dashboard (Role-Gated)
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!--
+    Viewport: standard responsive meta. Note: user-scalable=no is intentionally
+    omitted — accessibility best practice.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- ── Security Headers (should also be set server-side / via Firebase hosting.json) ── -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <!--
+    Content Security Policy (CSP):
+    - default-src 'self'          → Only load resources from our own origin by default
+    - script-src 'self' + CDNs   → Allow Firebase SDK, DOMPurify, Google Fonts scripts
+    - style-src  'self' + fonts  → Allow Google Fonts CSS
+    - font-src   fonts.gstatic    → Allow Google Fonts files
+    - connect-src firebase URLs   → Allow Firebase API calls
+    - img-src 'self' data:        → Allow inline base64 images (used for avatars)
+    - frame-src 'none'            → Disallow all iframes (clickjacking protection)
+    NOTE: 'unsafe-inline' is avoided. All styles are in style.css.
+          The 'nonce' approach for inline scripts is omitted for brevity but
+          is recommended for production hardening.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdnjs.cloudflare.com https://*.firebaseio.com https://*.googleapis.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://www.gstatic.com https://cdnjs.cloudflare.com http://127.0.0.1:* ws://127.0.0.1:*; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:;">
+
+  <title>PhishGuard Pro — Phishing Awareness Simulator</title>
+  <meta name="description" content="An interactive phishing awareness training simulator for university cyber security education." />
+
+  <!-- ── Google Fonts: Syne (display) + DM Mono (technical) + Outfit (body) ── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- ── Main Stylesheet ── -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!--
+    DOMPurify: Industry-standard XSS sanitization library.
+    CRITICAL SECURITY DEPENDENCY — sanitizes all HTML from Firestore before
+    injecting it into the DOM. Without this, a malicious admin could inject
+    arbitrary scripts via scenario body_html fields.
+    SRI hash ensures the file has not been tampered with (supply-chain security).
+  -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"
+          integrity="sha512-6jMDPyXVv2HxXAM1QvLBHxdBSwT0aGmKWdS+sTHXl9RPWF9nSHqhZSTNDhJKFmRqMzOzRRVSdAXs9NwgN2Og=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!--  GLOBAL APP SHELL                                                    -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+
+  <!-- ── Top Navigation Bar (shown after login, hidden on auth screen) ── -->
+  <nav id="app-nav" class="app-nav hidden" role="navigation" aria-label="Application navigation">
+    <div class="nav-brand">
+      <span class="nav-brand-icon" aria-hidden="true">⚡</span>
+      <span class="nav-brand-text">PhishGuard <em>Pro</em></span>
+    </div>
+
+    <div class="nav-controls">
+      <!-- Live Score Badge -->
+      <div class="nav-score-badge" role="status" aria-live="polite" aria-label="Current score">
+        <span class="nav-score-label">SCORE</span>
+        <span id="nav-score-value" class="nav-score-value">0</span>
+      </div>
+
+      <!-- Progress Indicator -->
+      <div class="nav-progress" role="progressbar" aria-label="Session progress"
+           aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+        <span id="nav-progress-text" class="nav-progress-text">0 / 0</span>
+        <div class="nav-progress-track">
+          <div id="nav-progress-bar" class="nav-progress-bar"></div>
+        </div>
+      </div>
+
+      <!-- User Info & Navigation Buttons -->
+      <div class="nav-user">
+        <span id="nav-username" class="nav-username" aria-label="Logged in user"></span>
+
+        <!-- Admin-only button, shown/hidden via JS based on role -->
+        <button id="btn-admin-nav" class="btn btn-ghost hidden" aria-label="Open admin dashboard">
+          Admin
+        </button>
+
+        <!-- Leaderboard toggle -->
+        <button id="btn-leaderboard-nav" class="btn btn-ghost" aria-label="Open leaderboard">
+          🏆 Board
+        </button>
+
+        <button id="btn-logout" class="btn btn-outline-danger" aria-label="Log out">
+          Sign Out
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!--  VIEW 1: AUTHENTICATION                                              -->
+  <!--  Shown when user is NOT logged in.                                   -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <main id="view-auth" class="view view-auth active" role="main" aria-label="Authentication">
+    <div class="auth-bg-grid" aria-hidden="true"></div>
+
+    <div class="auth-container">
+      <!-- Brand -->
+      <div class="auth-brand" aria-label="PhishGuard Pro branding">
+        <div class="auth-brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M24 4L6 12V24C6 34.5 14 43.5 24 46C34 43.5 42 34.5 42 24V12L24 4Z"
+                  stroke="currentColor" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+            <path d="M16 24L22 30L33 19" stroke="currentColor" stroke-width="2.5"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h1 class="auth-brand-title">PhishGuard <span>Pro</span></h1>
+        <p class="auth-brand-tagline">Cyber Threat Awareness Training</p>
+      </div>
+
+      <!-- Auth Card with Tab Switcher -->
+      <div class="auth-card" role="region" aria-label="Login and registration form">
+        <!-- Tab Headers -->
+        <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+          <button id="tab-login" class="auth-tab active" role="tab"
+                  aria-selected="true" aria-controls="panel-login">
+            Sign In
+          </button>
+          <button id="tab-register" class="auth-tab" role="tab"
+                  aria-selected="false" aria-controls="panel-register">
+            Register
+          </button>
+          <!-- Animated underline indicator -->
+          <div class="auth-tab-indicator" aria-hidden="true"></div>
+        </div>
+
+        <!-- ── Login Panel ── -->
+        <div id="panel-login" class="auth-panel active" role="tabpanel"
+             aria-labelledby="tab-login">
+          <form id="form-login" class="auth-form" novalidate aria-label="Sign in form">
+            <div class="form-group">
+              <label class="form-label" for="login-email">Email Address</label>
+              <input id="login-email" class="form-input" type="email"
+                     name="email" autocomplete="email"
+                     placeholder="you@university.edu"
+                     aria-required="true"
+                     aria-describedby="login-email-error" />
+              <span id="login-email-error" class="form-error" role="alert" aria-live="assertive"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="login-password">Password</label>
+              <div class="input-wrapper">
+                <input id="login-password" class="form-input" type="password"
+                       name="password" autocomplete="current-password"
+                       placeholder="••••••••••"
+                       aria-required="true"
+                       aria-describedby="login-password-error" />
+                <!-- Toggle password visibility -->
+                <button type="button" class="input-suffix-btn" aria-label="Toggle password visibility"
+                        data-target="login-password" data-action="toggle-pw">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
+              <span id="login-password-error" class="form-error" role="alert" aria-live="assertive"></span>
+            </div>
+
+            <!-- Global form error (e.g., wrong credentials from Firebase) -->
+            <div id="login-global-error" class="form-error-banner hidden" role="alert" aria-live="assertive"></div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="btn-login">
+              <span class="btn-text">Sign In</span>
+              <span class="btn-spinner hidden" aria-hidden="true"></span>
+            </button>
+          </form>
+        </div>
+
+        <!-- ── Register Panel ── -->
+        <div id="panel-register" class="auth-panel" role="tabpanel"
+             aria-labelledby="tab-register">
+          <form id="form-register" class="auth-form" novalidate aria-label="Registration form">
+            <div class="form-group">
+              <label class="form-label" for="reg-name">Full Name</label>
+              <input id="reg-name" class="form-input" type="text"
+                     name="displayName" autocomplete="name"
+                     placeholder="Jane Smith"
+                     aria-required="true"
+                     aria-describedby="reg-name-error"
+                     maxlength="80" />
+              <span id="reg-name-error" class="form-error" role="alert" aria-live="assertive"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="reg-email">Email Address</label>
+              <input id="reg-email" class="form-input" type="email"
+                     name="email" autocomplete="email"
+                     placeholder="you@university.edu"
+                     aria-required="true"
+                     aria-describedby="reg-email-error" />
+              <span id="reg-email-error" class="form-error" role="alert" aria-live="assertive"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="reg-password">Password</label>
+              <div class="input-wrapper">
+                <input id="reg-password" class="form-input" type="password"
+                       name="password" autocomplete="new-password"
+                       placeholder="Min. 8 characters"
+                       aria-required="true"
+                       aria-describedby="reg-password-error reg-pw-strength" />
+                <button type="button" class="input-suffix-btn" aria-label="Toggle password visibility"
+                        data-target="reg-password" data-action="toggle-pw">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
+              <!-- Password Strength Meter -->
+              <div id="reg-pw-strength" class="pw-strength" aria-live="polite">
+                <div class="pw-strength-bar">
+                  <div class="pw-strength-fill" id="pw-strength-fill"></div>
+                </div>
+                <span class="pw-strength-label" id="pw-strength-label"></span>
+              </div>
+              <span id="reg-password-error" class="form-error" role="alert" aria-live="assertive"></span>
+            </div>
+
+            <div id="reg-global-error" class="form-error-banner hidden" role="alert" aria-live="assertive"></div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="btn-register">
+              <span class="btn-text">Create Account</span>
+              <span class="btn-spinner hidden" aria-hidden="true"></span>
+            </button>
+          </form>
+        </div>
+      </div><!-- /.auth-card -->
+
+      <p class="auth-disclaimer">
+        This is a controlled educational environment. No real phishing attacks
+        are conducted. All scenarios are simulated.
+      </p>
+    </div><!-- /.auth-container -->
+  </main>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!--  VIEW 2: MAIN SIMULATION — EMAIL CLIENT                              -->
+  <!--  Shown when user IS logged in and a session is active.               -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <main id="view-sim" class="view view-sim hidden" role="main" aria-label="Email simulation">
+
+    <!-- ── Session Complete State (shown when all scenarios are done) ── -->
+    <div id="session-complete" class="session-complete hidden" role="region" aria-label="Session complete">
+      <div class="session-complete-card">
+        <div class="session-complete-icon" aria-hidden="true">🎯</div>
+        <h2 class="session-complete-title">Training Complete</h2>
+        <div class="session-complete-stats">
+          <div class="stat-item">
+            <span class="stat-value" id="final-score">0</span>
+            <span class="stat-label">Final Score</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="final-accuracy">0%</span>
+            <span class="stat-label">Accuracy</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="final-correct">0/0</span>
+            <span class="stat-label">Correct</span>
+          </div>
+        </div>
+        <button id="btn-play-again" class="btn btn-primary">
+          Train Again
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Email Client Shell ── -->
+    <div id="email-client-shell" class="email-client-shell">
+
+      <!-- Left Panel: Email List Sidebar (for realism; shows scenario queue) -->
+      <aside class="email-sidebar" role="complementary" aria-label="Email list">
+        <div class="sidebar-header">
+          <span class="sidebar-header-title">INBOX</span>
+          <span id="sidebar-unread-badge" class="sidebar-unread-badge">0</span>
+        </div>
+        <!-- Email list items injected by app.js -->
+        <ul id="email-list" class="email-list" role="list" aria-label="Scenario list">
+          <!-- Populated by renderEmailSidebar() in app.js -->
+        </ul>
+      </aside>
+
+      <!-- Right Panel: Email Viewer -->
+      <section class="email-viewer" role="region" aria-label="Email content viewer">
+
+        <!-- Email Viewer Header -->
+        <header class="email-viewer-header">
+          <div class="email-meta">
+            <!-- Sender Avatar (generated initial) -->
+            <div class="email-avatar" id="email-avatar" aria-hidden="true">?</div>
+
+            <div class="email-meta-text">
+              <!-- Sender Name + Email (email is wrapped for clue highlighting) -->
+              <div class="email-from">
+                <span id="email-sender-name" class="email-sender-name"></span>
+                <span id="email-sender-email" class="email-sender-email"
+                      data-clue-id="sender_email" aria-label="Sender email address"></span>
+              </div>
+              <!-- Subject -->
+              <h2 id="email-subject" class="email-subject"></h2>
+              <!-- Metadata row: timestamp + attachment -->
+              <div class="email-metadata-row">
+                <span id="email-timestamp" class="email-meta-chip"></span>
+                <span id="email-attachment-badge" class="email-meta-chip email-attachment-badge hidden"
+                      aria-label="Email has attachment"></span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Email Body (HTML sanitized by DOMPurify before injection) -->
+        <div id="email-body" class="email-body"
+             role="document"
+             aria-label="Email message body">
+          <!-- Injected by renderScenario() in app.js after DOMPurify sanitization -->
+        </div>
+
+        <!--
+          STATUS BAR (Hover Tooltip):
+          This div mimics a browser's bottom status bar. When the user hovers
+          over a link inside #email-body, app.js populates this bar with the
+          link's actual_url — revealing the true destination before clicking.
+          This is the critical UX mechanism for teaching URL inspection.
+        -->
+        <div id="email-status-bar" class="email-status-bar" role="status"
+             aria-live="polite" aria-label="Hovered link destination">
+          <span class="status-bar-icon" aria-hidden="true">🔗</span>
+          <span id="status-bar-url" class="status-bar-url"></span>
+        </div>
+
+        <!-- ── Action Bar ── -->
+        <footer class="action-bar" role="region" aria-label="Email classification actions">
+          <div class="action-bar-hint" aria-label="Instructions">
+            Analyze the email above — is it legitimate or a phishing attempt?
+          </div>
+          <div class="action-bar-buttons">
+            <button id="btn-mark-safe" class="btn btn-action btn-safe"
+                    aria-label="Mark this email as safe">
+              <span class="btn-action-icon" aria-hidden="true">✓</span>
+              <span>Mark as Safe</span>
+            </button>
+            <button id="btn-mark-phishing" class="btn btn-action btn-phishing"
+                    aria-label="Mark this email as phishing">
+              <span class="btn-action-icon" aria-hidden="true">⚠</span>
+              <span>Report Phishing</span>
+            </button>
+          </div>
+          <div class="action-bar-shortcut" aria-label="Keyboard shortcuts hint">
+            Press <kbd>S</kbd> for Safe · <kbd>P</kbd> for Phishing
+          </div>
+        </footer>
+
+      </section><!-- /.email-viewer -->
+    </div><!-- /.email-client-shell -->
+
+  </main>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!--  VIEW 3: ADMIN DASHBOARD                                             -->
+  <!--  Only accessible to users with role === 'admin' in Firestore.        -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <main id="view-admin" class="view view-admin hidden" role="main" aria-label="Admin dashboard">
+    <div class="admin-shell">
+
+      <!-- Admin Header -->
+      <header class="admin-header" role="banner">
+        <h1 class="admin-title">
+          <span aria-hidden="true">⚙</span> Admin Dashboard
+        </h1>
+        <p class="admin-subtitle">Manage phishing simulation scenarios and review analytics.</p>
+        <button id="btn-back-to-sim" class="btn btn-outline-secondary">
+          ← Back to Simulation
+        </button>
+      </header>
+
+      <div class="admin-grid">
+
+        <!-- ── Panel 1: Scenario Statistics ── -->
+        <section class="admin-card admin-stats-card" aria-label="Scenario statistics">
+          <h2 class="admin-card-title">Scenario Stats</h2>
+          <div class="admin-stats-grid" id="admin-stats-grid">
+            <div class="admin-stat">
+              <span class="admin-stat-value" id="stat-total-scenarios">—</span>
+              <span class="admin-stat-label">Total Scenarios</span>
+            </div>
+            <div class="admin-stat">
+              <span class="admin-stat-value" id="stat-active-scenarios">—</span>
+              <span class="admin-stat-label">Active</span>
+            </div>
+            <div class="admin-stat">
+              <span class="admin-stat-value" id="stat-total-users">—</span>
+              <span class="admin-stat-label">Registered Users</span>
+            </div>
+            <div class="admin-stat">
+              <span class="admin-stat-value" id="stat-avg-score">—</span>
+              <span class="admin-stat-label">Avg. Score</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Panel 2: Upload New Scenario ── -->
+        <section class="admin-card admin-upload-card" aria-label="Upload new scenario">
+          <h2 class="admin-card-title">Upload New Scenario</h2>
+          <p class="admin-card-desc">
+            Paste a valid scenario JSON object (see documentation for the schema).
+            All content is sanitized via DOMPurify before storage.
+          </p>
+
+          <form id="form-upload-scenario" class="admin-form" novalidate
+                aria-label="Scenario upload form">
+            <!--
+              SECURITY NOTE: This textarea accepts admin-supplied JSON.
+              app.js will:
+              1. Validate the JSON structure against a whitelist of allowed keys.
+              2. Sanitize the body_html field via DOMPurify.
+              3. Only write to Firestore if all validations pass.
+              4. The 'createdBy' field is auto-set to the logged-in admin's UID.
+            -->
+            <div class="form-group">
+              <label class="form-label" for="admin-scenario-json">
+                Scenario JSON
+              </label>
+              <textarea id="admin-scenario-json"
+                        class="form-input form-textarea"
+                        name="scenarioJson"
+                        rows="14"
+                        placeholder='{"id": "sc_custom_001", "difficulty": "medium", ...}'
+                        aria-required="true"
+                        aria-describedby="admin-json-error admin-json-hint"
+                        spellcheck="false"></textarea>
+              <span id="admin-json-hint" class="form-hint">
+                Required fields: id, difficulty, category, threat_type, isPhishing,
+                points, email (with sender, subject, body_html, links), clues.
+              </span>
+              <span id="admin-json-error" class="form-error" role="alert" aria-live="assertive"></span>
+            </div>
+
+            <div id="admin-upload-error" class="form-error-banner hidden" role="alert"></div>
+            <div id="admin-upload-success" class="form-success-banner hidden" role="status"></div>
+
+            <button type="submit" class="btn btn-primary" id="btn-upload-scenario">
+              <span class="btn-text">Validate &amp; Upload Scenario</span>
+              <span class="btn-spinner hidden" aria-hidden="true"></span>
+            </button>
+          </form>
+        </section>
+
+        <!-- ── Panel 3: Scenario Manager ── -->
+        <section class="admin-card admin-scenarios-card" aria-label="Scenario management">
+          <h2 class="admin-card-title">Manage Scenarios</h2>
+          <div class="admin-table-wrapper" role="region" aria-label="Scenarios table" tabindex="0">
+            <table class="admin-table" id="admin-scenarios-table"
+                   aria-label="All phishing scenarios">
+              <thead>
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Difficulty</th>
+                  <th scope="col">Points</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-scenarios-tbody">
+                <!-- Populated by loadAdminScenarios() in app.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ── Panel 4: Live Leaderboard ── -->
+        <section class="admin-card admin-leaderboard-card" aria-label="User leaderboard">
+          <h2 class="admin-card-title">User Leaderboard</h2>
+          <ol class="admin-leaderboard-list" id="admin-leaderboard-list"
+              aria-label="Top scoring users">
+            <!-- Populated by loadLeaderboard() in app.js -->
+          </ol>
+        </section>
+
+      </div><!-- /.admin-grid -->
+    </div><!-- /.admin-shell -->
+  </main>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!--  GLOBAL OVERLAYS & MODALS                                            -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+
+  <!--
+    XAI FEEDBACK MODAL:
+    Triggered after the user makes a classification decision.
+    Displays score delta, clue highlights, and educational explanation.
+    The clue-highlight mechanism is applied directly to #email-body elements
+    BEHIND this semi-transparent overlay via CSS (pointer-events: none on overlay).
+  -->
+  <div id="modal-feedback" class="modal-backdrop hidden"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="feedback-modal-title"
+       aria-describedby="feedback-modal-desc">
+    <div class="modal" id="feedback-modal-inner">
+      <!-- Result Header (correct / incorrect) -->
+      <div class="modal-result-header" id="feedback-result-header">
+        <div class="modal-result-icon" id="feedback-icon" aria-hidden="true"></div>
+        <div>
+          <h2 class="modal-result-title" id="feedback-modal-title"></h2>
+          <p class="modal-result-subtitle" id="feedback-modal-subtitle"></p>
+        </div>
+        <!-- Score Delta Badge -->
+        <div class="modal-score-delta" id="feedback-score-delta" aria-label="Points earned"></div>
+      </div>
+
+      <!-- Clue Navigator -->
+      <div class="modal-clues-section" id="feedback-clues-section" aria-label="Explanation clues">
+        <div class="modal-clue-header">
+          <span class="modal-clue-counter" id="modal-clue-counter" aria-live="polite"></span>
+          <span class="modal-clue-type-badge" id="modal-clue-type-badge"></span>
+        </div>
+        <h3 class="modal-clue-headline" id="modal-clue-headline"></h3>
+        <p class="modal-clue-explanation" id="modal-clue-explanation"
+           id="feedback-modal-desc"></p>
+      </div>
+
+      <!-- Summary (shown after all clues) -->
+      <div class="modal-summary-section hidden" id="feedback-summary-section"
+           aria-label="Scenario summary">
+        <h3 class="modal-summary-title">Summary</h3>
+        <p id="feedback-summary-text" class="modal-summary-text"></p>
+      </div>
+
+      <!-- Modal Action Buttons -->
+      <div class="modal-actions">
+        <a id="btn-learn-more" class="btn btn-ghost" href="#" target="_blank"
+           rel="noopener noreferrer" aria-label="Open external learning resource">
+          Learn More ↗
+        </a>
+        <button id="btn-modal-next" class="btn btn-primary" aria-label="Next clue or next scenario">
+          Next Clue →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    LEADERBOARD MODAL:
+    Full leaderboard overlay, fetched from Firestore in real-time.
+  -->
+  <div id="modal-leaderboard" class="modal-backdrop hidden"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="leaderboard-modal-title">
+    <div class="modal modal-leaderboard">
+      <div class="modal-header-row">
+        <h2 id="leaderboard-modal-title" class="modal-title">🏆 Leaderboard</h2>
+        <button class="modal-close-btn" data-close-modal="modal-leaderboard"
+                aria-label="Close leaderboard">✕</button>
+      </div>
+      <ol class="leaderboard-list" id="leaderboard-list-modal" aria-label="Top scores"></ol>
+    </div>
+  </div>
+
+  <!--
+    TOAST NOTIFICATION CONTAINER:
+    Non-blocking, accessible notifications for events like "Scenario saved!"
+  -->
+  <div id="toast-container" class="toast-container" role="log"
+       aria-live="polite" aria-relevant="additions"
+       aria-label="Notifications"></div>
+
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <!--  FIREBASE SDK (Modular, CDN)                                         -->
+  <!--  Using the compat bundle for simplicity; swap to tree-shakable       -->
+  <!--  module imports if using a bundler (Vite/Webpack).                   -->
+  <!-- ════════════════════════════════════════════════════════════════════ -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+
+  <!-- ── Main Application Script ── -->
+  <script src="app.js" defer></script>
+
+</body>
+</html>
