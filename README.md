@@ -54,27 +54,31 @@
 Because the application is built with native Vanilla JS and CDN integrations, no heavyweight build bundlers or package managers are required.
 
 ### 1. Clone the repository
-```bash
-git clone [https://github.com/](https://github.com/)<your-username>/Phishguard-Pro.git
+\`\`\`bash
+git clone https://github.com/<your-username>/Phishguard-Pro.git
 cd Phishguard-Pro
+\`\`\`
 
-2. Launch Local Server
+### 2. Launch Local Server
 You can run the application using any static HTTP server:
 
-Using VS Code: Right-click index.html and select "Open with Live Server".
-
-Using Node.js:
-
-Bash
+* **Using VS Code:** Right-click `index.html` and select **"Open with Live Server"**.
+* **Using Node.js:**
+\`\`\`bash
 npx serve .
-Using Python:
-
-Bash
+\`\`\`
+* **Using Python:**
+\`\`\`bash
 python -m http.server 5500
-Open your browser at http://localhost:5500 or http://localhost:3000.
+\`\`\`
 
-📁 Repository Structure
-Plaintext
+Open your browser at `http://localhost:5500` or `http://localhost:3000`.
+
+---
+
+## 📁 Repository Structure
+
+\`\`\`text
 Phishguard-Pro/
   ├── index.html        ← Semantic SPA markup, CSP metadata & CDN loader
   ├── style.css         ← Glassmorphic surfaces, button effects & XAI animations
@@ -85,6 +89,11 @@ Phishguard-Pro/
   │     ├── summary.png
   │     └── admin.png
   └── README.md         ← Project documentation
-⚙️ Configuration Notes
-Firebase Keys: Update your configuration inside app.js under the firebaseConfig object before deployment.
+\`\`\`
 
+---
+
+## ⚙️ Configuration Notes
+
+1. **Firebase Keys:** Update your configuration inside `app.js` under the `firebaseConfig` object before deployment.
+2. **Authorized Domains:** When hosting on GitHub Pages, remember to whitelist your `*.github.io` domain inside **Firebase Console -> Authentication -> Settings -> Authorized domains**.
