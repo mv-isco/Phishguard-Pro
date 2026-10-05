@@ -8,7 +8,6 @@
 [![Backend](<img width="1916" height="966" alt="image" src="https://github.com/user-attachments/assets/3506e755-3f93-4bd0-aa55-b7c0937d0ceb" />
 )
 [![Admin](<img width="1917" height="967" alt="image" src="https://github.com/user-attachments/assets/ad2cf55a-033f-47da-960f-be70e3e44d8d" />
-)(<img width="1917" height="961" alt="image" src="https://github.com/user-attachments/assets/a68cb66f-883e-4bf9-84c0-f2c0fb47a834" />
 )
 
 **PhishGuard Pro** is a high-fidelity Single Page Application (SPA) designed to train users and security teams to detect modern, sophisticated social engineering attacks. Unlike static training platforms, PhishGuard Pro implements **Explainable AI (XAI)** logic that dynamically pinpoints deceptive artifacts in real time, teaching users *why* an email is malicious.
