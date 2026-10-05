@@ -78,7 +78,7 @@ Open your browser at `http://localhost:5500` or `http://localhost:3000`.
 
 ## 📁 Repository Structure
 
-\`\`\`text
+```text
 Phishguard-Pro/
   ├── index.html        ← Semantic SPA markup, CSP metadata & CDN loader
   ├── style.css         ← Glassmorphic surfaces, button effects & XAI animations
@@ -89,7 +89,7 @@ Phishguard-Pro/
   │     ├── summary.png
   │     └── admin.png
   └── README.md         ← Project documentation
-\`\`\`
+```
 
 ---
 
