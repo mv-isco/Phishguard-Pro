@@ -54,23 +54,23 @@
 Because the application is built with native Vanilla JS and CDN integrations, no heavyweight build bundlers or package managers are required.
 
 ### 1. Clone the repository
-\`\`\`bash
+```bash
 git clone https://github.com/<your-username>/Phishguard-Pro.git
 cd Phishguard-Pro
-\`\`\`
+```
 
 ### 2. Launch Local Server
 You can run the application using any static HTTP server:
 
 * **Using VS Code:** Right-click `index.html` and select **"Open with Live Server"**.
 * **Using Node.js:**
-\`\`\`bash
+```bash
 npx serve .
-\`\`\`
+```
 * **Using Python:**
-\`\`\`bash
+```bash
 python -m http.server 5500
-\`\`\`
+```
 
 Open your browser at `http://localhost:5500` or `http://localhost:3000`.
 
