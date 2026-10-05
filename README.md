@@ -1,14 +1,10 @@
 # 🛡️ PhishGuard Pro
 ### Advanced Phishing Awareness Simulator with Explainable AI (XAI) Feedback
 
-[![Security](<img width="1916" height="965" alt="image" src="https://github.com/user-attachments/assets/8d7e773b-fcb8-4f24-ae33-e40617f46545" />
-)
-[![UI/UX](<img width="1917" height="962" alt="image" src="https://github.com/user-attachments/assets/e236d342-63fa-4a51-9966-8716e1e42e72" />
-)
-[![Backend](<img width="1916" height="966" alt="image" src="https://github.com/user-attachments/assets/3506e755-3f93-4bd0-aa55-b7c0937d0ceb" />
-)
-[![Admin](<img width="1917" height="967" alt="image" src="https://github.com/user-attachments/assets/ad2cf55a-033f-47da-960f-be70e3e44d8d" />
-)
+[![Security](https://img.shields.io/badge/Security-XAI%20Feedback-8A2BE2?style=for-the-badge&logo=shield)](https://github.com)
+[![UI/UX](https://img.shields.io/badge/UI-Glassmorphism-0078D4?style=for-the-badge&logo=css3)](https://github.com)
+[![Backend](https://img.shields.io/badge/Database-Firebase%20Firestore-FFA611?style=for-the-badge&logo=firebase)](https://github.com)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
 **PhishGuard Pro** is a high-fidelity Single Page Application (SPA) designed to train users and security teams to detect modern, sophisticated social engineering attacks. Unlike static training platforms, PhishGuard Pro implements **Explainable AI (XAI)** logic that dynamically pinpoints deceptive artifacts in real time, teaching users *why* an email is malicious.
 
@@ -18,12 +14,12 @@
 
 | Simulation Engine | XAI Clue Highlighting |
 | :---: | :---: |
-| ![Simulation View](screenshots/simulation.png) | ![Clue Highlight](screenshots/clue-highlight.png) |
+| <img src="https://github.com/user-attachments/assets/8d7e773b-fcb8-4f24-ae33-e40617f46545" width="100%" alt="Simulation View" /> | <img src="https://github.com/user-attachments/assets/e236d342-63fa-4a51-9966-8716e1e42e72" width="100%" alt="Clue Highlight" /> |
 | *High-fidelity email client with URL spoof inspection* | *Dynamic DOM clue targeting with pulse animations* |
 
 | Evaluation Summary | Admin Scenario Injection |
 | :---: | :---: |
-| ![Summary View](screenshots/summary.png) | ![Admin Dashboard](screenshots/admin.png) |
+| <img src="https://github.com/user-attachments/assets/3506e755-3f93-4bd0-aa55-b7c0937d0ceb" width="100%" alt="Summary View" /> | <img src="https://github.com/user-attachments/assets/ad2cf55a-033f-47da-960f-be70e3e44d8d" width="100%" alt="Admin Dashboard" /> |
 | *Real-time score delta & accuracy metrics* | *Sanitized scenario creation with schema validation* |
 
 ---
