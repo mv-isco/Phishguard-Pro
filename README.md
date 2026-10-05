@@ -88,11 +88,3 @@ Phishguard-Pro/
 ⚙️ Configuration Notes
 Firebase Keys: Update your configuration inside app.js under the firebaseConfig object before deployment.
 
-Authorized Domains: When hosting on GitHub Pages, remember to whitelist your *.github.io domain inside Firebase Console -> Authentication -> Settings -> Authorized domains.
-
-
-### Chto tut uluchsheno:
-1. **Bedzhi (Badges):** Dobavleny krupnye bedzhi `for-the-badge` s tsvetami v stile kibberbeza.
-2. **Tablica skrinshotov:** Vse 4 skrinshota oformleny v vide udobnoy setki 2x2.
-3. **Vektor atak:** Detalno raspisany voprosy bezopasnosti (Punycode, Subdomains, BEC, QRishing), cto srazu privlekaet vnimanie rekruterov.
-4. **Razdel Security by Design:** Vydeleny DOMPurify, CSP i Firestore Rules.
